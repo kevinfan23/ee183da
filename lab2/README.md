@@ -1,4 +1,4 @@
- ## Robot Pianista
+# Robot Pianista
 
 Robot Pianista is an Arduino Internet of things (IoT) API for web-controlled piano playing, using servos.  
 
@@ -11,16 +11,16 @@ Robot Pianista is an Arduino Internet of things (IoT) API for web-controlled pia
   - **License**  
 
 ### Demo
-[Demo](https://vimeo.com/202894019)
+[Demo](https://vimeo.com/202894019)  
 
-### Hardware Requirements
+### Hardware Requirements  
 To use this API, the following hardware requirements have to be met:
 * [ESP8266 micro-controller](https://en.wikipedia.org/wiki/ESP8266) - ESP8266 Micro-controller with Internet shield
 * [ESP-12E motor shield](https://smartarduino.gitbooks.io/user-mannual-for-esp-12e-motor-shield/content/interface.html) - Motor shield for ESP8266 to drive the servos
 * [Micro servo](https://www.adafruit.com/products/169?gclid=Cj0KEQiA_eXEBRDP8fnIlJDXxsIBEiQAAGfyocOxexE9orkD1clvZEldCO0z9T-eg9v4C2jLbUiJisgaAjMX8P8HAQ)
 * Mini USB cable
 
-### Design
+### Design  
 This IoT API was designed as a preliminary step to construct a web-controlled orchestra with Arduino and servos. The ESP8266 micro-controller was used as a server for users to interact with the servos wirelessly through WiFi and their local browsers.
 
 ### Implementation
@@ -112,7 +112,7 @@ Serial.println("Client disonnected"); //Looking under the hood
  * [ESP8266 programming tutorial](http://www.instructables.com/id/Programming-the-ESP8266-12E-using-Arduino-software/)  
 
 ### License  
-MIT  
+**MIT**
 
 [//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
 
