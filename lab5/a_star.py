@@ -58,7 +58,7 @@ class AStar_Solver:
 
 	def Solve(self):
 		startState = State_String(self.start,
-									0,	
+									0,
 									self.start,
 									self.goal)
 		count = 0
