@@ -6,23 +6,33 @@ DISCOVERED = 1
 CURRENT = 9
 
 class Grid(object):
+    num_rows = 0
+    num_cols = 0
+    grid = []
 
     def __init__(self, n, m):
         # Creates a matrix.
+        self.num_rows = n
+        self.num_cols = m
         self.grid = np.zeros((n,m))
 
-    def add_obstacle(self, row, column):
-        self.grid[row - 1][column - 1] = OBSTACLE
+    def add_obstacle(self, x, y):
+        self.grid[x - 1][y - 1] = OBSTACLE
         return
 
-    def mark_discovered(self. row, column)
-        self.grid[row - 1][column - 1] = DISCOVERED
+    def set_discovered(self, x, y):
+        self.grid[x - 1][y - 1] = DISCOVERED
         return
 
-    def set_current(self. row, column):
-        self.grid[row - 1][column - 1] = CURRENT
+    def is_obstacle(self, x, y):
+        if self.grid[x - 1][y - 1] == OBSTACLE:
+            return True
+        return False
+
+    def set_current(self, x, y):
+        self.grid[x - 1][y - 1] = CURRENT
         return
 
-
-    def print_grid():
-        return self.grid
+    def print_grid(self):
+        print(self.grid)
+        return
