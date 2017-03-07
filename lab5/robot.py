@@ -1,4 +1,6 @@
 from grid import Grid
+#from ekf import EKF
+
 
 DELAY_SEC = 500
 
@@ -184,7 +186,7 @@ class Robot(object):
         self.mapping.print_grid()
         print("\n")
 
-Car = Robot(10, 10, 2, 2)
+Car = Robot(20, 20, 2, 2)
 
 Car.move_forward()
 Car.move_back()

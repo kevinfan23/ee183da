@@ -1,9 +1,10 @@
 
 import numpy as np
 
-OBSTACLE = -1
-DISCOVERED = 1
-CURRENT = 9
+EMPTY = "."
+OBSTACLE = "#"
+DISCOVERED = "o"
+CURRENT = '@'
 
 class Grid(object):
     num_rows = 0
@@ -14,7 +15,12 @@ class Grid(object):
         # Creates a matrix.
         self.num_rows = n
         self.num_cols = m
-        self.grid = np.zeros((n,m))
+        self.grid = []
+
+        for i in range(n):
+            self.grid.append([])
+            for j in range(m):
+                self.grid[i].append(EMPTY)
 
     def add_obstacle(self, x, y):
         self.grid[x - 1][y - 1] = OBSTACLE
@@ -34,5 +40,7 @@ class Grid(object):
         return
 
     def print_grid(self):
-        print(self.grid)
+        for dot in self.grid:
+            print(" ".join(map(str, dot)))
         return
+        #print(self.grid)
