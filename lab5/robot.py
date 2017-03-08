@@ -1,6 +1,7 @@
-from grid import Grid
+from grid import *
+from dijkstra import *
 #from ekf import EKF
-from bfs import *
+#from bfs import *
 
 
 DELAY_SEC = 500
@@ -13,14 +14,14 @@ pwm1 = 0
 pwm2 = 0
 inputs = [pwm1, pwm2]
 directions = ["+x", "-x", "+y", "-y"]
-pos_start = (3, 3)
-pos_finish = (10, 6)
+pos_start = (4, 3)
+pos_finish = (10, 10)
 
 # add barriers
 barriers = [
-    (5, 3), (5, 4), (5, 5), (5, 6), (5, 7),
+    (5, 3), (5, 4), (5, 5), (5, 6), (5, 7), (5, 8),
     (6, 3), (6, 4), (6, 5), (6, 6), (6, 7),
-    (7, 6), (7, 7), (7, 8), (7, 8), (7, 10),
+    (7, 6), (7, 7), (7, 8), (7, 9), (7, 10),
     (8, 6), (8, 7), (8, 8), (8, 9), (8, 10),
     (9, 4), (9, 5), (9, 6), (9, 7), (9, 8)
 ]
@@ -204,5 +205,11 @@ class Robot(object):
         self.mapping.print_grid()
         print("\n")
 
-Car = Robot(11, 11, pos_start[0], pos_start[1])
-BFS(pos_start, pos_finish, Car)
+#Car = Robot(11, 11, pos_start[0], pos_start[1])
+diagram4 = WeightedGrid(15, 15)
+diagram4.obstabcles = barriers
+
+came_from, cost_so_far = dijkstra_search(diagram4, pos_start, pos_finish)
+draw_grid(diagram4, point_to=came_from, start=pos_start, goal=pos_finish)
+print()
+draw_grid(diagram4, path=reconstruct_path(came_from, start=pos_start, goal=pos_finish))
