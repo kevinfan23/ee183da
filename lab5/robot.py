@@ -1,13 +1,11 @@
 from grid import *
 from dijkstra import *
+import time
 #from ekf import EKF
 #from bfs import *
 
 
 DELAY_SEC = 500
-
-START = "A"
-FINISH = "B"
 
 # control inputs
 pwm1 = 0
@@ -30,40 +28,64 @@ class Robot(object):
 
     mapping = []
     direction = ""
-    x = 0
-    y = 0
 
-    def __init__(self, n, m, x, y, direction="+x"):
-        self.mapping = Grid(n, m)
+    def __init__(self, n, m, pos_start, pos_finish):
+        self.mapping = WeightedGrid(n, m)
         self.mapping.obstabcles = barriers
-        self.direction = direction
-        self.x = x
-        self.y = y
+        self.pos_start = pos_start
+        self.pos_finish = pos_finish
+        self.pos = pos_start
         self.init_boundaries()
-        self.set_start(x, y)
-        self.set_finish(x, y)
+        self.set_start(pos_start)
+        self.set_finish(pos_finish)
+        self.path = []
         self.report_status()
 
-    def set_start(self, x, y):
-        self.x = x
-        self.y = y
-        self.mapping.set_position(x, y, START)
+    def set_start(self, pos):
+        self.mapping.set_position(pos, START)
         return
 
-    def set_finish(self, x, y):
-        self.mapping.set_position(pos_finish[0], pos_finish[1], FINISH)
+    def set_finish(self, pos):
+        self.mapping.set_position(pos, FINISH)
         return
 
-    def set_current(self, x, y):
-        self.x = x
-        self.y = y
-        self.mapping.set_position(x, y, CURRENT)
+    def set_current(self, pos):
+        self.pos = pos
+        self.mapping.set_position(pos, CURRENT)
         return
+
+    def set_discovered(self, pos):
+        self.mapping.set_position(pos, DISCOVERED)
 
     def init_boundaries(self):
         for barrier in barriers:
-            self.mapping.add_obstacle(barrier[0], barrier[1])
+            self.mapping.add_obstacle(barriers)
         return
+
+    def calculate_path(self):
+        came_from, cost_so_far = dijkstra_search(self.mapping, self.pos_start, self.pos_finish)
+        self.path = reconstruct_path(came_from, start=pos_start, goal=pos_finish)
+        for pos in self.path:
+            (x, y) = pos
+            if pos != self.pos_start and pos != self.pos_finish:
+                self.mapping.set_position(pos, PATH)
+        self.report_status()
+
+    def automate(self):
+        for pos in self.path:
+            time.sleep(0.5)
+            self.set_discovered(self.pos)
+            self.pos = pos
+            self.set_current(pos)
+            self.report_status()
+            #self.mapping
+
+            if pos == pos_finish:
+                print("======= PATH FOUND =======")
+                return True
+
+        print("======= FAILED: PATH CANT BE FOUND =======")
+        return False
 
     def move_forward(self):
         if self.direction == "+x":
@@ -199,17 +221,14 @@ class Robot(object):
 
     def report_status(self):
         print("{} : {}".format("Input", inputs))
-        print("{} : {}".format("Position [x, y]: ", [self.x, self.y]))
+        print("{} : {}".format("Current Position [x, y]", [self.pos[0], self.pos[1]]))
         print("{} : {}".format("Direction", self.direction))
         print("Map:")
         self.mapping.print_grid()
         print("\n")
 
-#Car = Robot(11, 11, pos_start[0], pos_start[1])
-diagram4 = WeightedGrid(15, 15)
-diagram4.obstabcles = barriers
-
-came_from, cost_so_far = dijkstra_search(diagram4, pos_start, pos_finish)
-draw_grid(diagram4, point_to=came_from, start=pos_start, goal=pos_finish)
-print()
-draw_grid(diagram4, path=reconstruct_path(came_from, start=pos_start, goal=pos_finish))
+Car = Robot(15, 15, pos_start, pos_finish)
+Car.calculate_path()
+Car.automate()
+# Car.report_status()
+#draw_grid(Car.mapping, path=reconstruct_path(came_from, start=pos_start, goal=pos_finish))

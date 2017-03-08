@@ -3,8 +3,12 @@ import numpy as np
 
 EMPTY = "."
 OBSTACLE = "#"
-DISCOVERED = "@"
+DISCOVERED = "o"
+PATH = "@"
 CURRENT = "X"
+
+START = "A"
+FINISH = "B"
 
 # class Grid(object):
 #     num_rows = 0
@@ -27,10 +31,6 @@ CURRENT = "X"
 #         self.grid[x][y] = OBSTACLE
 #         return
 #
-#     def set_discovered(self, pos):
-#         (x, y) = pos
-#         self.grid[x][y] = DISCOVERED
-#         return
 #
 #     def is_discovered(self, pos):
 #         (x, y) = pos
@@ -68,13 +68,13 @@ CURRENT = "X"
 #         return
 #         #print(self.grid)
 
-def draw_tile(graph, id, style, width):
+def draw_tile(graph, pos, style, width):
     r = "."
-    if 'number' in style and id in style['number']: r = "%d" % style['number'][id]
-    if 'start' in style and id == style['start']: r = "A"
-    if 'goal' in style and id == style['goal']: r = "Z"
-    if 'path' in style and id in style['path']: r = "@"
-    if id in graph.obstabcles: r = "#"
+    if 'number' in style and pos in style['number']: r = "%d" % style['number'][id]
+    if 'start' in style and pos == style['start']: r = START
+    if 'goal' in style and pos == style['goal']: r = FINISH
+    if 'path' in style and pos in style['path']: r = "@"
+    if pos in graph.obstabcles: r = "#"
     return r
 
 def draw_grid(graph, width=2, **style):
@@ -85,10 +85,26 @@ def draw_grid(graph, width=2, **style):
 
 class Grid(object):
     def __init__(self, n, m):
+        # Creates a matrix.
         self.num_rows = n
         self.num_cols = m
         self.grid = []
         self.obstabcles = []
+
+        for i in range(n):
+            self.grid.append([])
+            for j in range(m):
+                self.grid[i].append(EMPTY)
+
+    def set_position(self, pos, symbol):
+        self.grid[pos[0]][pos[1]] = symbol
+        return
+
+    def add_obstacle(self, barriers):
+        self.obstabcles = barriers
+        for pos in self.obstabcles:
+            self.grid[pos[0]][pos[1]] = OBSTACLE
+        return
 
     def is_in_bounds(self, pos):
         (x, y) = pos
@@ -104,6 +120,11 @@ class Grid(object):
         next_level = filter(self.is_in_bounds, next_level)
         next_level = filter(self.is_passable, next_level)
         return next_level
+
+    def print_grid(self):
+        for dot in self.grid:
+            print(" ".join(map(str, dot)))
+        return
 
 class WeightedGrid(Grid):
     def __init__(self, n, m):
