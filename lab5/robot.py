@@ -1,11 +1,12 @@
 from grid import *
 from dijkstra import *
+from ekf import EKF
 import time
-#from ekf import EKF
+from math import *
 #from bfs import *
 
 
-DELAY_SEC = 500
+DELAY_SEC = 0.5
 
 # control inputs
 pwm1 = 0
@@ -15,6 +16,11 @@ directions = ["+x", "-x", "+y", "-y"]
 pos_start = (4, 3)
 pos_finish = (10, 10)
 
+# Robot geometry measurements
+L = 4.25
+r = 3
+vmax = 0.22
+
 # add barriers
 barriers = [
     (5, 3), (5, 4), (5, 5), (5, 6), (5, 7), (5, 8),
@@ -23,6 +29,83 @@ barriers = [
     (8, 6), (8, 7), (8, 8), (8, 9), (8, 10),
     (9, 4), (9, 5), (9, 6), (9, 7), (9, 8)
 ]
+
+class RobotEKF(EKF):
+    '''
+    An EKF for mouse tracking
+    '''
+
+    def __init__(self, n, m, x, y, theta=0):
+
+        # Four states, two measurements (X,Y)
+        EKF.__init__(self, n, m)
+
+        self.x[0] = x
+        self.x[1] = y
+        self.x[2] = theta
+        self.num_states = n
+        self.num_measurements = m
+
+
+    def f(self, x):
+        F = np.array([
+           [self.x[0] + self.x[3]*DELAY_SEC],
+           [self.x[1] + self.x[4]*DELAY_SEC],
+           [self.x[2] + self.x[5]*DELAY_SEC],
+           [pwm1*(-1/2)*cos(self.x[2])*vmax/90 + pwm2*(1/2)*cos(self.x[2])*vmax/90],
+           [pwm1*(-1/2)*sin(self.x[2])*vmax/90 + pwm2*(1/2)*sin(self.x[2])*vmax/90],
+           [pwm1*vmax/(180*L) - pwm2*vmax/(180*L)]
+        ])
+        # State-transition function is identity
+        return F
+
+    def getF(self, x):
+        A = np.eye(6)
+        A[0][0] = 1;
+        A[0][3] = DELAY_SEC;
+        A[1][1] = 1;
+        A[1][4] = DELAY_SEC;
+        A[2][2] = 1;
+        A[2][5] = DELAY_SEC;
+
+        # So state-transition Jacobian is identity matrix
+        return A
+
+    def h(self, x):
+        H = np.array([
+            [self.x[3]*cos(self.x[2]) + self.x[4]*sin(self.x[2]) + self.x[5]*(L/2)],
+            [self.x[3]*cos(self.x[2]) + self.x[4]*sin(self.x[2]) - self.x[5]*(L/2)]
+            [self.x[2]]
+        ])
+
+        # Observation function is identity
+        return H
+
+    def getH(self, x):
+        # C = np.array()
+        # C[0][3] = cos(self.x[2]);
+        # C[0][4] = sin(self.x[2]) ;
+        # C[0][5] = L/2 ;
+        # C[1][3] = cos(self.x[2]);
+        # C[1][4] = sin(self.x[2]);
+        # C[1][5] = L/2 ;
+        # C[2][5] = 1;
+
+        C = np.array([
+            [0, 0, 0, cos(self.x[2]), sin(self.x[2]), L/2],
+            [0, 0, 0, cos(self.x[2]), sin(self.x[2]), L/2],
+            [0, 0, 0, 0, 0, 1],
+        ])
+
+        print(C)
+
+        # So observation Jacobian is identity matrix
+        return C
+
+    def report_states(self):
+        print("{} {}".format("Predicted States [x, y, theta, x_hat, y_hat, theta_hat] \n", self.x))
+        print("\n")
+        return
 
 class Robot(object):
 
@@ -39,7 +122,13 @@ class Robot(object):
         self.set_start(pos_start)
         self.set_finish(pos_finish)
         self.path = []
+
+        # declare an efk instance
+        self.ekf = RobotEKF(6, 3, pos_start[0], pos_start[1])
+
         self.report_status()
+
+
 
     def set_start(self, pos):
         self.mapping.set_position(pos, START)
@@ -73,7 +162,7 @@ class Robot(object):
 
     def automate(self):
         for pos in self.path:
-            time.sleep(0.5)
+            time.sleep(DELAY_SEC)
             self.set_discovered(self.pos)
             self.pos = pos
             self.set_current(pos)
@@ -87,148 +176,17 @@ class Robot(object):
         print("======= FAILED: PATH CANT BE FOUND =======")
         return False
 
-    def move_forward(self):
-        if self.direction == "+x":
-            if self.mapping.is_obstacle(self.x+1, self.y):
-                self.report_status()
-                return False
-            else:
-                self.mapping.set_discovered(self.x, self.y)
-                self.set_current(self.x+1, self.y)
-                # self.x = self.x + 1
-                self.report_status()
-                return True
-        elif self.direction == "+y":
-            if self.mapping.is_obstacle(self.x, self.y+1):
-                self.report_status()
-                return False
-            else:
-                self.mapping.set_discovered(self.x, self.y)
-                self.set_current(self.x, self.y+1)
-                # self.y = self.y + 1
-                self.report_status()
-                return True
-        elif self.direction == "-x":
-            if self.mapping.is_obstacle(self.x-1, self.y):
-                self.report_status()
-                return False
-            else:
-                self.mapping.set_discovered(self.x, self.y)
-                self.set_current(self.x-1, self.y)
-                # self.x = self.x - 1
-                self.report_status()
-                return True
-        elif self.direction == "-y":
-            if self.mapping.is_obstacle(self.x, self.y-1):
-                self.report_status()
-                return False
-            else:
-                self.mapping.set_discovered(self.x, self.y)
-                self.set_current(self.x, self.y-1)
-                # self.y = self.y - 1
-                self.report_status()
-                return True
-        else:
-            self.report_status()
-            return False
-
-    def move_back(self):
-        if self.direction == "+x":
-            if self.mapping.is_obstacle(self.x-1, self.y):
-                self.report_status()
-                return False
-            else:
-                self.mapping.set_discovered(self.x, self.y)
-                self.set_current(self.x-1, self.y)
-                # self.x = self.x - 1
-                self.report_status()
-                return True
-        elif self.direction == "+y":
-            if self.mapping.is_obstacle(self.x, self.y-1):
-                self.report_status()
-                return False
-            else:
-                self.mapping.set_discovered(self.x, self.y)
-                self.set_current(self.x, self.y-1)
-                # self.y = self.y - 1
-                self.report_status()
-                return True
-        elif self.direction == "-x":
-            if self.mapping.is_obstacle(self.x+1, self.y):
-                self.report_status()
-                return False
-            else:
-                self.mapping.set_discovered(self.x, self.y)
-                self.set_current(self.x+1, self.y)
-                # self.x = self.x + 1
-                self.report_status()
-                return True
-        elif self.direction == "-y":
-            if self.mapping.is_obstacle(self.x, self.y+1):
-                self.report_status()
-                return False
-            else:
-                self.mapping.set_discovered(self.x, self.y)
-                self.set_current(self.x, self.y+1)
-                # self.y = self.y + 1
-                self.report_status()
-                return True
-        else:
-            self.report_status()
-            return False
-
-    def turn_left(self):
-        if self.direction == "+x":
-            self.direction = "+y"
-            self.report_status()
-            return True
-        elif self.direction == "+y":
-            self.direction = "-x"
-            self.report_status()
-            return True
-        elif self.direction == "-x":
-            self.direction = "-y"
-            self.report_status()
-            return True
-        elif self.direction == "-y":
-            self.direction = "+x"
-            self.report_status()
-            return True
-        else:
-            self.report_status()
-            return False
-
-    def turn_right(self):
-        if self.direction == "+x":
-            self.direction = "-y"
-            self.report_status()
-            return True
-        elif self.direction == "+y":
-            self.direction = "+x"
-            self.report_status()
-            return True
-        elif self.direction == "-x":
-            self.direction = "+y"
-            self.report_status()
-            return True
-        elif self.direction == "-y":
-            self.direction = "-x"
-            self.report_status()
-            return True
-        else:
-            self.report_status()
-            return False
-
     def report_status(self):
         print("{} : {}".format("Input", inputs))
         print("{} : {}".format("Current Position [x, y]", [self.pos[0], self.pos[1]]))
-        print("{} : {}".format("Direction", self.direction))
+        self.ekf.report_states()
+        #print("{} : {}".format("Direction", self.direction))
         print("Map:")
         self.mapping.print_grid()
         print("\n")
 
 Car = Robot(15, 15, pos_start, pos_finish)
-Car.calculate_path()
-Car.automate()
-# Car.report_status()
-#draw_grid(Car.mapping, path=reconstruct_path(came_from, start=pos_start, goal=pos_finish))
+#Car.ekf.step((1, 1, 1))
+
+# Car.calculate_path()
+# Car.automate()
