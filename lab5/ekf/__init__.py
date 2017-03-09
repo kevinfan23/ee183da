@@ -14,6 +14,7 @@
 '''
 
 import numpy as np
+from numpy import dot
 from abc import ABCMeta, abstractmethod
 
 class EKF(object):
@@ -66,12 +67,18 @@ class EKF(object):
 
         # $G_k = P_k H^T_k (H_k P_k H^T_k + R)^{-1}$
 
-        G = np.dot(self.P_pre * self.H.T, np.linalg.inv(self.H * self.P_pre * self.H.T + self.R))
+        G1 = dot(self.P_pre, self.H.T)
+        G2 = dot(self.H, self.P_pre)
+        G3 = np.linalg.inv(dot(G2, self.H.T) + self.R)
+        G = dot(G1, G3)
 
-        # $\hat{x}_k = \hat{x_k} + G_k(z_k - h(\hat{x}_k))$
-        self.x += np.dot(G, (np.array(z) - self.h(self.x).T).T)
-
-        # $P_k = (I - G_k H_k) P_k$
+        # G = np.dot(self.P_pre * self.H.T, np.linalg.inv(self.H * self.P_pre * self.H.T + self.R))
+        #
+        # # $\hat{x}_k = \hat{x_k} + G_k(z_k - h(\hat{x}_k))$
+        #print((z - self.h(self.x)).shape)
+        self.x += np.dot(G, (z - self.h(self.x)))
+        #
+        # # $P_k = (I - G_k H_k) P_k$
         self.P_post = np.dot(self.I - np.dot(G, self.H), self.P_pre)
 
         # return self.x.asarray()

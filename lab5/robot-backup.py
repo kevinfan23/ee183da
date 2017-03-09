@@ -1,6 +1,6 @@
 from grid import *
 from dijkstra import *
-from ekf import EKF
+from ekf import kalman
 import time
 from math import *
 #from bfs import *
@@ -73,9 +73,9 @@ class RobotEKF(EKF):
 
     def h(self, x):
         H = np.array([
-            self.x[3]*cos(self.x[2]) + self.x[4]*sin(self.x[2]) + self.x[5]*(L/2),
-            self.x[3]*cos(self.x[2]) + self.x[4]*sin(self.x[2]) - self.x[5]*(L/2),
-            self.x[2]
+            [self.x[3]*cos(self.x[2]) + self.x[4]*sin(self.x[2]) + self.x[5]*(L/2)],
+            [self.x[3]*cos(self.x[2]) + self.x[4]*sin(self.x[2]) - self.x[5]*(L/2)]
+            [self.x[2]]
         ])
 
         # Observation function is identity
@@ -186,10 +186,7 @@ class Robot(object):
         print("\n")
 
 Car = Robot(15, 15, pos_start, pos_finish)
-
-# z is the measurements, with dimension (m, 1), in this case (3, 1)
-z = np.array([[1], [1], [1]])
-print(Car.ekf.step(z).tolist())
+Car.ekf.step((1, 1, 1))
 
 # Car.calculate_path()
 # Car.automate()

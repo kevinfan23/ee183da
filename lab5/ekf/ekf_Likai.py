@@ -41,6 +41,7 @@ def getF(self, x):
        [0,0,0,0,0,0]]
 
 def h(self, x):
+    C =
     return np.array[
     [this->x[3]*cos(theta) + this->x[4]*sin(theta) + this->x[5]*(L/2)],
     [this->x[3]*cos(theta) + this->x[4]*sin(theta) - this->x[5]*(L/2)]
