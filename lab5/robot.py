@@ -204,8 +204,5 @@ class Robot(object):
 
 Car = Robot(15, 15, pos_start, pos_finish)
 
-# z is the measurements, with dimension (m, 1), in this case (3, 1)
-z = np.array([[1], [1], [1]])
-
 Car.calculate_path()
 Car.automate()
