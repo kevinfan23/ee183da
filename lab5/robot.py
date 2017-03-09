@@ -49,16 +49,24 @@ class Robot(object):
         self.mapping.obstabcles = barriers
         self.init_boundaries()
 
+        self.num_rows = n
+        self.num_cols = m
+
         self.direction = direction
         self.pos_start = pos_start
         self.pos_finish = pos_finish
+
+        self.pos_abs = pos_start
+        self.pos_abs = (self.num_rows - 1 - pos_start[0], pos_start[1])
+
         self.pos = pos_start
         self.set_start(pos_start)
         self.set_finish(pos_finish)
         self.path = []
+        self.inputs = [0, 0]
 
         # declare an efk instance
-        self.ekf = EKF(pos_start[0], pos_start[1], 6, 3)
+        self.ekf = EKF(self.pos_abs[1], self.pos_abs[0], 6, 3)
 
         self.report_status()
 
@@ -84,25 +92,25 @@ class Robot(object):
         return
 
     def move_forward(self):
-        print("moving forward")
-        #self.ekf.S = self.ekf.step(V_MAX, V_MAX)
+        self.inputs = [V_MAX, V_MAX]
+        self.ekf.S = self.ekf.step(V_MAX, V_MAX)
         return
 
     def move_backward(self):
-        print("moving backward")
-        #self.ekf.S = self.ekf.step(-V_MAX, -V_MAX)
+        self.inputs = [-V_MAX, -V_MAX]
+        self.ekf.S = self.ekf.step(-V_MAX, -V_MAX)
         return
 
     def turn_left(self):
-        print("turning left")
-        # for i in range(7):
-        #     self.ekf.S = self.ekf.step(-V_MAX, V_MAX)
+        self.inputs = [-V_MAX, V_MAX]
+        for i in range(7):
+             self.ekf.S = self.ekf.step(-V_MAX, V_MAX)
         return
 
     def turn_right(self):
-        print("turning right")
-        # for i in range(7):
-        #     self.ekf.S = self.ekf.step(V_MAX, -V_MAX)
+        self.inputs = [V_MAX, -V_MAX]
+        for i in range(7):
+            self.ekf.S = self.ekf.step(V_MAX, -V_MAX)
         return
 
     def calculate_path(self):
@@ -151,8 +159,10 @@ class Robot(object):
                         self.move_forward()
                     elif self.direction == "+x":
                         self.turn_right()
+                        self.move_forward()
                     elif self.direction == "-x":
                         self.turn_left()
+                        self.move_forward()
 
                     self.direction = "-y"
                 elif (pos[0] - self.pos[0]) == -1:
@@ -168,6 +178,7 @@ class Robot(object):
                     self.direction = "+y"
 
             self.pos = pos
+            self.pos_abs = (self.num_rows - 1 - pos[0], pos[1])
             self.set_current(pos)
             self.report_status()
             #self.mapping
@@ -181,10 +192,10 @@ class Robot(object):
         return False
 
     def report_status(self):
-        print("{} : {}".format("Input", inputs))
-        print("{} : {}".format("Current Position [x, y]", [self.pos[0], self.pos[1]]))
+        print("{} : {}".format("Input", self.inputs))
+        print("{} : {}".format("Current Position [x, y]", [self.pos_abs[1], self.pos_abs[0]]))
         print("{} : {}".format("Estimated States [x, y, theta, x_hat, y_hat, theta_hat]",
-        [self.ekf.S[0], self.ekf.S[1], self.ekf.S[2], self.ekf.S[3], self.ekf.S[4], self.ekf.S[5]])
+        [float(str.format('{0:.3f}', self.ekf.S[0])), float(str.format('{0:.3f}', self.ekf.S[1])), float(str.format('{0:.3f}', degrees(self.ekf.S[2]))), float(str.format('{0:.3f}', self.ekf.S[3])), float(str.format('{0:.3f}', self.ekf.S[4])), float(str.format('{0:.3f}', self.ekf.S[5])) ])
         )
         print("{} : {}".format("Direction", self.direction))
         print("Map:")
