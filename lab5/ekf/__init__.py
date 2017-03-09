@@ -1,118 +1,77 @@
 '''
     Extended Kalman Filter in Python
-
-    Copyright (C) 2016 Simon D. Levy
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Lesser General Public License as
-    published by the Free Software Foundation, either version 3 of the
-    License, or (at your option) any later version.
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARANTY without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
 '''
-
 import numpy as np
-from numpy import dot
-from abc import ABCMeta, abstractmethod
+from numpy.linalg import inv
+from math import *
+import random as rm
 
 class EKF(object):
-    '''
-    A abstrat class for the Extended Kalman Filter, based on the tutorial in
-    http://home.wlu.edu/~levys/kalman_tutorial.
-    '''
-    __metaclass__ = ABCMeta
 
-    def __init__(self, n, m, pval=0.1, qval=1e-4, rval=0.1):
-        '''
-        Creates a KF object with n states, m observables, and specified values for
-        prediction noise covariance pval, process noise covariance qval, and
-        measurement noise covariance rval.
-        '''
+    def __init__(self, x, y, n=6, m=3):
+        self.num_states = n
+        self.num_measurements = m
+        self.S = np.array([x, y, 0, 0, 0, 0])
+        self.U = np.array([0, 0])
+        return
 
-        # No previous prediction noise covariance
-        self.P_pre = None
+    def step(self, u1, u2):
+        #A Matrix
+        self.U = np.array([u1,u2])
+        P = np.eye(self.num_states)
+        A = np.eye(self.num_states)
+        A[3][3] = 0
+        A[4][4] = 0
+        A[5][5] = 0
 
-        # Current state is zero, with diagonal noise covariance matrix
-        self.x = np.zeros((n,1))
-        self.P_post = np.eye(n) * pval
+        #B Matrix
+        B = np.array([
+        	[0.5*cos(x[2])*t,0.5*cos(x[2])*t],
+        	[0.5*sin(x[2])*t,0.5*sin(x[2])*t],
+        	[-1/(2*L)*t,1/(2*L)*t],
+        	[0.5*cos(x[2]),0.5*cos(x[2])],
+        	[0.5*sin(x[2]),0.5*sin(x[2])],
+        	[-1/(2*L),1/(2*L)]])
 
-        # Get state transition and measurement Jacobians from implementing class
-        self.F = self.getF(self.x)
-        self.H = self.getH(self.x)
+        #predict
+        x = np.dot(A,self.x)+np.dot(B,self.U)
+        P = np.dot(np.dot(A,P),np.transpose(A))
+        #print (x)
+        if u1 == V_MAX and u2 == V_MAX:
+        	z = np.array([u1+rm.uniform(-0.01,0.01),u2+rm.uniform(-0.01,0.01),0])
+        	C = np.array([
+        		[0,0,0,x[3]/(sqrt(x[3]**2+x[4]**2)),x[4]/(sqrt(x[3]**2+x[4]**2)),0],
+        		[0,0,0,x[3]/(sqrt(x[3]**2+x[4]**2)),x[4]/(sqrt(x[3]**2+x[4]**2)),0],
+        		[0,0,0,0,0,0]
+        		])
+        elif u1 == -V_MAX and u2 == -V_MAX:
+        	z = np.array([-(u1+rm.uniform(-0.01,0.01)),-(u2+rm.uniform(-0.01,0.01)),0])
+        	C = np.array([
+        		[0,0,0,-x[3]/(sqrt(x[3]**2+x[4]**2)),-x[4]/(sqrt(x[3]**2+x[4]**2)),0],
+        		[0,0,0,-x[3]/(sqrt(x[3]**2+x[4]**2)),-x[4]/(sqrt(x[3]**2+x[4]**2)),0],
+        		[0,0,0,0,0,0]
+        		])
+        elif u1 == V_MAX and u2 == -V_MAX:
+        	z = np.array([u1+rm.uniform(-0.01,0.01),-(u2+rm.uniform(-0.01,0.01)),0])
+        	C = np.array([
+        		[0,0,0,0,0,-L],
+        		[0,0,0,0,0,-L],
+        		[0,0,0,0,0,1]
+        		])
+        elif u1 == -V_MAX and u2 == V_MAX:
+        	z = np.array([-(u1+rm.uniform(-0.01,0.01)),u2+rm.uniform(-0.01,0.01),0])
+        	C = np.array([
+        	[0,0,0,0,0,L],
+        	[0,0,0,0,0,L],
+        	[0,0,0,0,0,1]
+        	])
 
-        # Set up covariance matrices for process noise and measurement noise
-        self.Q = np.eye(n) * qval
-        self.R = np.eye(m) * rval
+        #Update states and covariances
+        temp = np.dot(np.dot(C,P),np.transpose(C))
+        temp2 = inv(temp + np.eye(self.num_measurements))
+        G = np.dot(np.dot(P,np.transpose(C)),temp2)
+        self.S = self.S + np.dot(G,(z-(np.dot(C,self.S))))
+        P = (np.eye(self.num_states)-np.dot(G,C))
 
-        # Identity matrix will be usefel later
-        self.I = np.eye(n)
-
-    def step(self, z):
-        '''
-        Runs one step of the EKF on observations z, where z is a tuple of length M.
-        Returns a NumPy array representing the updated state.
-        '''
-
-        # Predict ----------------------------------------------------
-
-        # $\hat{x}_k = f(\hat{x}_{k-1})$
-        self.x = self.f(self.x)
-
-        # $P_k = F_{k-1} P_{k-1} F^T_{k-1} + Q_{k-1}$
-        self.P_pre = self.F * self.P_post * self.F.T + self.Q
-
-        # Update -----------------------------------------------------
-
-        # $G_k = P_k H^T_k (H_k P_k H^T_k + R)^{-1}$
-
-        G1 = dot(self.P_pre, self.H.T)
-        G2 = dot(self.H, self.P_pre)
-        G3 = np.linalg.inv(dot(G2, self.H.T) + self.R)
-        G = dot(G1, G3)
-
-        # G = np.dot(self.P_pre * self.H.T, np.linalg.inv(self.H * self.P_pre * self.H.T + self.R))
-        #
-        # # $\hat{x}_k = \hat{x_k} + G_k(z_k - h(\hat{x}_k))$
-        #print((z - self.h(self.x)).shape)
-        self.x += np.dot(G, (z - self.h(self.x)))
-        #
-        # # $P_k = (I - G_k H_k) P_k$
-        self.P_post = np.dot(self.I - np.dot(G, self.H), self.P_pre)
-
-        # return self.x.asarray()
-        return self.x
-
-    @abstractmethod
-    def f(self, x):
-        '''
-        Your implementing class should define this method for the state transition function f(x),
-        returning a NumPy array of n elements.  Typically this is just the identity function np.copy(x).
-        '''
-        raise NotImplementedError()
-
-    @abstractmethod
-    def getF(self, x):
-        '''
-        Your implementing class should define this method for returning the n x n Jacobian matrix F of the
-        state transition function as a NumPy array.  Typically this is just the identity matrix np.eye(n).
-        '''
-        raise NotImplementedError()
-
-    @abstractmethod
-    def h(self, x):
-        '''
-        Your implementing class should define this method for the observation function h(x), returning
-        a NumPy array of m elements. For example, your function might include a component that
-        turns barometric pressure into altitude in meters.
-        '''
-        raise NotImplementedError()
-
-    @abstractmethod
-    def getH(self, x):
-        '''
-        Your implementing class should define this method for returning the m x n Jacobian matirx H of the
-        observation function as a NumPy array.
-        '''
-        raise NotImplementedError()
+        print(self.S)
+        return self.S
